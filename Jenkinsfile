@@ -2,20 +2,44 @@ pipeline {
     agent any
 
     stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Restore') {
+            steps {
+                echo 'Restoring NuGet packages'
+                bat 'dotnet restore'
+            }
+        }
+
         stage('Build') {
             steps {
-                echo 'Building..'
+                echo 'Building .NET frontend'
+                bat 'dotnet build --configuration Release --no-restore'
             }
         }
-        stage('Test') {
+
+        stage('Security Test') {
             steps {
-                echo 'Testing..'
+                echo 'Running OWASP Dependency Check'
+                bat '''
+                C:\\tools\\dependency-check\\bin\\dependency-check.bat ^
+                --scan . ^
+                --format HTML ^
+                --out dependency-check-report ^
+                --noupdate
+                '''
             }
         }
-        stage('Deploy') {
-            steps {
-                echo 'Deploying....'
-            }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'dependency-check-report/**', fingerprint: true
         }
     }
 }
